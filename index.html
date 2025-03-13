@@ -7,34 +7,49 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="main-layout">
+    <div class="layout">
         <div id="container">
-            <!-- Portraits will be dynamically added here -->
-            <div class="search-container">
-                <div class="search-dropdown">
-                    <button class="search-button">Search companies →</button>
+            <!-- Portraits will be added here dynamically -->
+        </div>
+        
+        <div class="profile-panel">
+            <div class="profile-content">
+                <div class="profile-image"></div>
+                <h2 class="profile-name">Select a Portrait</h2>
+                <div class="profile-company">Click on any portrait to view details</div>
+                <p class="profile-bio">Biographical information will appear here when you select a portrait.</p>
+            </div>
+            
+            <div class="search-section">
+                <div class="dropdown">
+                    <button class="search-button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                        </svg>
+                        Filter by Company
+                    </button>
                     <div class="dropdown-content">
                         <div class="dropdown-item selected" data-company="all">All Companies</div>
                         <!-- Company options will be added dynamically -->
                     </div>
                 </div>
                 <div class="active-filter">
-                    <span class="filter-label">Showing: </span>
+                    <span class="filter-label">Showing:</span>
                     <span class="filter-value">All Companies</span>
                     <button class="reset-filter" style="display: none;">×</button>
                 </div>
             </div>
         </div>
-        <div id="profile-panel">
-            <div class="profile-content">
-                <div class="profile-image"></div>
-                <div class="profile-info">
-                    <h2 class="profile-name">Select a portrait</h2>
-                    <p class="profile-company">Click on any portrait to view details</p>
-                    <p class="profile-bio">Information about the selected portrait will appear here.</p>
-                </div>
-                <!-- Navigation buttons have been removed as requested -->
-            </div>
+    </div>
+    
+    <!-- Grid Container for filtered portraits -->
+    <div id="grid-container">
+        <div class="grid-header">
+            <h2 class="grid-title">Company Portraits</h2>
+            <button class="grid-close">×</button>
+        </div>
+        <div class="grid-portraits">
+            <!-- Grid portraits will be added here dynamically -->
         </div>
     </div>
     <script src="scripts.js"></script>
