@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Gallery</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="main-layout">
+        <div id="container">
+            <!-- Portraits will be dynamically added here -->
+            <div class="search-container">
+                <div class="search-dropdown">
+                    <button class="search-button">Search companies →</button>
+                    <div class="dropdown-content">
+                        <div class="dropdown-item selected" data-company="all">All Companies</div>
+                        <!-- Company options will be added dynamically -->
+                    </div>
+                </div>
+                <div class="active-filter">
+                    <span class="filter-label">Showing: </span>
+                    <span class="filter-value">All Companies</span>
+                    <button class="reset-filter" style="display: none;">×</button>
+                </div>
+            </div>
+        </div>
+        <div id="profile-panel">
+            <div class="profile-content">
+                <div class="profile-image"></div>
+                <div class="profile-info">
+                    <h2 class="profile-name">Select a portrait</h2>
+                    <p class="profile-company">Click on any portrait to view details</p>
+                    <p class="profile-bio">Information about the selected portrait will appear here.</p>
+                </div>
+                <!-- Navigation buttons have been removed as requested -->
+            </div>
+        </div>
+    </div>
+    <script src="scripts.js"></script>
+</body>
+</html>
