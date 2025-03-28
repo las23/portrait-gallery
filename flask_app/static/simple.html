@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Portrait Gallery Filter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .filter-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .filter-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .dropdown-content.show {
+            display: block;
+        }
+        
+        .dropdown-item {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 60px;
+        }
+        
+        .portrait-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .portrait-card img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+        
+        .portrait-info {
+            padding: 15px;
+        }
+        
+        .portrait-info h3 {
+            margin: 0 0 5px 0;
+        }
+        
+        .portrait-info p {
+            margin: 0;
+            color: #666;
+        }
+        
+        .current-filter {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .current-filter.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Portrait Gallery</h1>
+    
+    <div class="filter-container">
+        <button class="filter-button">Filter by Company</button>
+        <div class="dropdown-content" id="companyDropdown">
+            <!-- Companies will be dynamically added here -->
+        </div>
+        <div class="current-filter">
+            Currently showing: <span id="currentCompany">All Companies</span>
+            <button id="resetFilter" style="margin-left: 10px;">Reset</button>
+        </div>
+    </div>
+    
+    <div class="grid-container" id="portraitGrid">
+        <!-- Portraits will be dynamically added here -->
+    </div>
+    
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Simple page loaded');
+            
+            // DOM elements
+            const filterButton = document.querySelector('.filter-button');
+            const dropdownContent = document.querySelector('.dropdown-content');
+            const portraitGrid = document.getElementById('portraitGrid');
+            const currentCompanyText = document.getElementById('currentCompany');
+            const currentFilter = document.querySelector('.current-filter');
+            const resetFilterButton = document.getElementById('resetFilter');
+            
+            // Global variables
+            let portraits = [];
+            let currentCompany = 'all';
+            
+            // Toggle dropdown when filter button is clicked
+            filterButton.addEventListener('click', function() {
+                console.log('Filter button clicked');
+                dropdownContent.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking outside
+            window.addEventListener('click', function(event) {
+                if (!event.target.matches('.filter-button') && dropdownContent.classList.contains('show')) {
+                    dropdownContent.classList.remove('show');
+                }
+            });
+            
+            // Reset filter button
+            resetFilterButton.addEventListener('click', function() {
+                filterPortraits('all');
+            });
+            
+            // Fetch portraits from API
+            async function fetchPortraits() {
+                try {
+                    const response = await fetch('/api/portraits');
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch portraits');
+                    }
+                    
+                    portraits = await response.json();
+                    console.log(`Loaded ${portraits.length} portraits`);
+                    
+                    // Initialize page
+                    populateCompanyDropdown();
+                    displayPortraits(portraits);
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to load portraits. Please refresh the page.');
+                }
+            }
+            
+            // Populate company dropdown
+            function populateCompanyDropdown() {
+                // Extract unique companies
+                const companies = [...new Set(portraits.map(p => p.company))].sort();
+                console.log(`Found ${companies.length} unique companies`);
+                
+                // Add "All Companies" option
+                const allOption = document.createElement('div');
+                allOption.className = 'dropdown-item';
+                allOption.textContent = 'All Companies';
+                allOption.addEventListener('click', function() {
+                    filterPortraits('all');
+                });
+                dropdownContent.appendChild(allOption);
+                
+                // Add each company
+                companies.forEach(company => {
+                    const option = document.createElement('div');
+                    option.className = 'dropdown-item';
+                    option.textContent = company;
+                    option.addEventListener('click', function() {
+                        filterPortraits(company);
+                    });
+                    dropdownContent.appendChild(option);
+                });
+            }
+            
+            // Filter portraits by company
+            function filterPortraits(company) {
+                console.log(`Filtering portraits by company: ${company}`);
+                currentCompany = company;
+                
+                // Update UI
+                currentCompanyText.textContent = company === 'all' ? 'All Companies' : company;
+                currentFilter.classList.toggle('active', company !== 'all');
+                
+                // Close dropdown
+                dropdownContent.classList.remove('show');
+                
+                // Filter and display portraits
+                if (company === 'all') {
+                    displayPortraits(portraits);
+                } else {
+                    const filtered = portraits.filter(p => p.company === company);
+                    displayPortraits(filtered);
+                }
+            }
+            
+            // Display portraits in grid
+            function displayPortraits(portraitsToShow) {
+                // Clear grid
+                portraitGrid.innerHTML = '';
+                
+                // Add each portrait
+                portraitsToShow.forEach(portrait => {
+                    const card = document.createElement('div');
+                    card.className = 'portrait-card';
+                    
+                    const img = document.createElement('img');
+                    img.src = portrait.image;
+                    img.alt = portrait.name;
+                    
+                    const info = document.createElement('div');
+                    info.className = 'portrait-info';
+                    
+                    const name = document.createElement('h3');
+                    name.textContent = portrait.name;
+                    
+                    const company = document.createElement('p');
+                    company.textContent = portrait.company;
+                    
+                    info.appendChild(name);
+                    info.appendChild(company);
+                    
+                    card.appendChild(img);
+                    card.appendChild(info);
+                    
+                    portraitGrid.appendChild(card);
+                });
+                
+                console.log(`Displayed ${portraitsToShow.length} portraits`);
+            }
+            
+            // Start loading portraits
+            fetchPortraits();
+        });
+    </script>
+</body>
+</html>

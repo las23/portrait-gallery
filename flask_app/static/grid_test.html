@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Display Test</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+        }
+
+        /* Main container */
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        /* Filter button */
+        .filter-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Grid overlay */
+        #grid-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 2000;
+            overflow: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            display: none; /* Hidden by default */
+        }
+
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .grid-title {
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .grid-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .grid-portraits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .grid-portrait {
+            width: 200px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .grid-portrait:hover {
+            transform: translateY(-5px);
+        }
+
+        .grid-portrait img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .portrait-info {
+            padding: 10px;
+            text-align: center;
+        }
+
+        .portrait-info h3 {
+            margin: 0 0 5px 0;
+        }
+
+        /* Sample portrait styles - just for the test */
+        .portrait {
+            width: 150px;
+            height: 200px;
+            background-color: #ddd;
+            margin: 10px;
+            display: inline-block;
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main container -->
+    <div class="container">
+        <h1>Grid Display Test</h1>
+        <p>Click on the buttons to test the grid overlay functionality.</p>
+        
+        <!-- Some sample portraits for the background -->
+        <div class="portrait" style="top: 100px; left: 100px;"></div>
+        <div class="portrait" style="top: 150px; left: 300px;"></div>
+        <div class="portrait" style="top: 200px; left: 500px;"></div>
+        
+        <!-- Filter button -->
+        <button class="filter-button" id="showGridButton">Show Grid Overlay</button>
+        
+        <!-- Company filter buttons for testing -->
+        <div style="position: fixed; left: 20px; top: 20px; z-index: 100;">
+            <button id="companyA">Company A</button>
+            <button id="companyB">Company B</button>
+            <button id="companyC">Company C</button>
+        </div>
+    </div>
+    
+    <!-- Grid overlay -->
+    <div id="grid-overlay">
+        <div class="grid-header">
+            <h2 class="grid-title">Company Portraits</h2>
+            <button class="grid-close">&times;</button>
+        </div>
+        <div class="grid-portraits" id="gridPortraits">
+            <!-- Grid portraits will be added here -->
+        </div>
+    </div>
+    
+    <script>
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up test page');
+            
+            // Get references to DOM elements
+            const showGridButton = document.getElementById('showGridButton');
+            const gridOverlay = document.getElementById('grid-overlay');
+            const closeButton = document.querySelector('.grid-close');
+            const gridPortraits = document.getElementById('gridPortraits');
+            const gridTitle = document.querySelector('.grid-title');
+            
+            // Company test buttons
+            const companyAButton = document.getElementById('companyA');
+            const companyBButton = document.getElementById('companyB');
+            const companyCButton = document.getElementById('companyC');
+            
+            // Sample portrait data for testing
+            const portraitData = [
+                { id: 1, name: 'Person 1', company: 'Company A', image: 'https://randomuser.me/api/portraits/men/1.jpg' },
+                { id: 2, name: 'Person 2', company: 'Company A', image: 'https://randomuser.me/api/portraits/women/2.jpg' },
+                { id: 3, name: 'Person 3', company: 'Company B', image: 'https://randomuser.me/api/portraits/men/3.jpg' },
+                { id: 4, name: 'Person 4', company: 'Company B', image: 'https://randomuser.me/api/portraits/women/4.jpg' },
+                { id: 5, name: 'Person 5', company: 'Company C', image: 'https://randomuser.me/api/portraits/men/5.jpg' },
+                { id: 6, name: 'Person 6', company: 'Company C', image: 'https://randomuser.me/api/portraits/women/6.jpg' },
+            ];
+            
+            // Show grid button click
+            showGridButton.addEventListener('click', function() {
+                console.log('Show grid button clicked');
+                showGrid('All Companies', portraitData);
+            });
+            
+            // Company buttons click
+            companyAButton.addEventListener('click', function() {
+                console.log('Company A button clicked');
+                const filtered = portraitData.filter(p => p.company === 'Company A');
+                showGrid('Company A', filtered);
+            });
+            
+            companyBButton.addEventListener('click', function() {
+                console.log('Company B button clicked');
+                const filtered = portraitData.filter(p => p.company === 'Company B');
+                showGrid('Company B', filtered);
+            });
+            
+            companyCButton.addEventListener('click', function() {
+                console.log('Company C button clicked');
+                const filtered = portraitData.filter(p => p.company === 'Company C');
+                showGrid('Company C', filtered);
+            });
+            
+            // Grid close button click
+            closeButton.addEventListener('click', function() {
+                console.log('Close button clicked');
+                gridOverlay.style.display = 'none';
+            });
+            
+            // Function to show grid with filtered portraits
+            function showGrid(title, portraits) {
+                console.log('Showing grid with title:', title);
+                console.log('Portraits:', portraits);
+                
+                // Update grid title
+                gridTitle.textContent = title + ' Portraits';
+                
+                // Clear existing grid portraits
+                gridPortraits.innerHTML = '';
+                
+                // Add portraits to grid
+                portraits.forEach(portrait => {
+                    const portraitEl = document.createElement('div');
+                    portraitEl.className = 'grid-portrait';
+                    
+                    const img = document.createElement('img');
+                    img.src = portrait.image;
+                    img.alt = portrait.name;
+                    
+                    const info = document.createElement('div');
+                    info.className = 'portrait-info';
+                    
+                    const name = document.createElement('h3');
+                    name.textContent = portrait.name;
+                    
+                    const company = document.createElement('p');
+                    company.textContent = portrait.company;
+                    
+                    info.appendChild(name);
+                    info.appendChild(company);
+                    
+                    portraitEl.appendChild(img);
+                    portraitEl.appendChild(info);
+                    
+                    // Add portrait to grid
+                    gridPortraits.appendChild(portraitEl);
+                });
+                
+                // Show grid overlay
+                gridOverlay.style.display = 'block';
+                
+                // Apply !important to ensure display
+                gridOverlay.setAttribute('style', 'display: block !important');
+                
+                console.log('Grid should now be visible. Current style:', gridOverlay.style.display);
+            }
+        });
+    </script>
+</body>
+</html>

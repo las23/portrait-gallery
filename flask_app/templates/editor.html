@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Portrait Editor{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="text-primary">Portrait Editor</h1>
+            <a href="{{ url_for('portraits.add_portrait') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add New Portrait
+            </a>
+        </div>
+        
+        <div class="search-box">
+            <form action="{{ url_for('portraits.editor') }}" method="get" class="row g-3">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" name="query" id="query" placeholder="Search by name, company or bio..." value="{{ form.query.data or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="company" id="company" class="form-select">
+                        {% for value, label in form.company.choices %}
+                            <option value="{{ value }}" {% if value == form.company.data %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <select name="sort" id="sort" class="form-select">
+                            {% for value, label in form.sort.choices %}
+                                <option value="{{ value }}" {% if value == form.sort.data %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if portraits.items %}
+    <div class="table-responsive">
+        <table class="table table-hover editor-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Bio</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for portrait in portraits.items %}
+                    <tr>
+                        <td>{{ portrait.id }}</td>
+                        <td>
+                            <img src="{{ url_for('static', filename='portraits/' + portrait.image_filename) }}" class="portrait-thumbnail" alt="{{ portrait.name }}">
+                        </td>
+                        <td>{{ portrait.name }}</td>
+                        <td>
+                            <span class="badge badge-company">{{ portrait.company }}</span>
+                        </td>
+                        <td class="bio-preview">{{ portrait.bio }}</td>
+                        <td>{{ portrait.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('portraits.view_portrait', id=portrait.id) }}" class="btn btn-sm btn-info text-white" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('portraits.edit_portrait', id=portrait.id) }}" class="btn btn-sm btn-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal" 
+                                        data-portrait-id="{{ portrait.id }}"
+                                        data-portrait-name="{{ portrait.name }}"
+                                        title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if portraits.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('portraits.editor', page=portraits.prev_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+            {% endif %}
+            
+            {% for page_num in portraits.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    {% if portraits.page == page_num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('portraits.editor', page=page_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}">{{ page_num }}</a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if portraits.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('portraits.editor', page=portraits.next_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% else %}
+    <div class="text-center my-5">
+        <div class="mb-4">
+            <i class="bi bi-people text-muted" style="font-size: 64px;"></i>
+        </div>
+        <h3 class="text-muted">No portraits found</h3>
+        {% if form.query.data or form.company.data %}
+            <p>Try adjusting your search criteria</p>
+            <a href="{{ url_for('portraits.editor') }}" class="btn btn-outline-primary mt-2">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Filters
+            </a>
+        {% else %}
+            <p>There are no portraits in the database yet</p>
+            <a href="{{ url_for('portraits.add_portrait') }}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle"></i> Add Your First Portrait
+            </a>
+        {% endif %}
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the portrait of <strong id="portraitNameToDelete"></strong>?</p>
+                <p class="text-danger">This action cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" action="" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set up the delete modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                // Button that triggered the modal
+                const button = event.relatedTarget;
+                
+                // Extract info from data attributes
+                const portraitId = button.getAttribute('data-portrait-id');
+                const portraitName = button.getAttribute('data-portrait-name');
+                
+                // Update the modal's content
+                const portraitNameElement = deleteModal.querySelector('#portraitNameToDelete');
+                portraitNameElement.textContent = portraitName;
+                
+                // Set the form action
+                const deleteForm = deleteModal.querySelector('#deleteForm');
+                deleteForm.action = `/portraits/${portraitId}/delete`;
+            });
+        }
+    });
+</script>
+{% endblock %}

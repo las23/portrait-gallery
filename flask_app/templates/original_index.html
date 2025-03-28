@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Gallery</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        /* Additional styles for the repositioned filter button */
+        .corner-filter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        #container {
+            position: relative; /* Ensure the container is a positioning context */
+            overflow: hidden; /* Prevent overflow from child elements */
+        }
+        
+        /* Dropdown content styles - Dark mode redesign */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            left: auto;
+            background-color: rgba(30, 30, 34, 0.95);
+            min-width: 220px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.35);
+            z-index: 1001;
+            border-radius: 12px;
+            overflow: hidden;
+            padding: 8px 0;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(128, 128, 128, 0.2);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        /* Make dropdown visible when button is clicked */
+        .dropdown-content.show {
+            display: block !important;
+        }
+        
+        .dropdown-item {
+            color: #e0e0e0;
+            padding: 12px 18px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            font-weight: 400;
+            border-left: 3px solid transparent;
+        }
+        
+        .dropdown-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left: 3px solid #64a0ff;
+        }
+        
+        .dropdown-item.selected {
+            background-color: rgba(100, 160, 255, 0.15);
+            font-weight: 500;
+            border-left: 3px solid #64a0ff;
+            color: #ffffff;
+        }
+        
+        .search-button {
+            background-color: rgba(35, 35, 40, 0.9);
+            border: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e0e0e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(128, 128, 128, 0.2);
+        }
+        
+        .search-button:hover {
+            background-color: rgba(45, 45, 55, 0.95);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .search-button svg {
+            fill: #64a0ff;
+        }
+        
+        /* Dark mode grid container styles */
+        #grid-container {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(22, 22, 28, 0.80);
+            padding: 30px;
+            z-index: 1500; 
+            overflow: auto;
+            display: none;
+            box-sizing: border-box;
+        }
+        
+        /* Ensure grid container displays properly */
+        #grid-container.force-visible {
+            display: block !important;
+            visibility: visible !important;
+            z-index: 9999 !important;
+            opacity: 1 !important;
+        }
+        
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+            padding-bottom: 15px;
+        }
+        
+        .grid-title {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+        }
+        
+        .grid-close {
+            background: none;
+            border: none;
+            font-size: 26px;
+            cursor: pointer;
+            color: #a0a0a0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+            background: rgba(128, 128, 128, 0.15);
+        }
+        
+        .grid-close:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .grid-portraits {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+            padding: 10px 0;
+        }
+        
+        .grid-portrait {
+            /* Styles from .portrait */
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+            background-color: #333;
+            position: relative;
+            /* Keep position relative for info overlay */
+        }
+        
+        .grid-portrait:hover {
+            /* Style from .portrait:hover */
+            transform: scale(1.05);
+        }
+        
+        .grid-portrait img {
+            width: 100%;
+            height: auto; /* Adjust height based on aspect ratio */
+            aspect-ratio: 200 / 280; /* Maintain aspect ratio like flowing portraits might implicitly */
+            object-fit: cover;
+            display: block; /* from .portrait img */
+        }
+        
+        /* Styles for info overlay, copied from .portrait-info in styles.css */
+        .portrait-info {
+            padding: 15px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+        
+        /* Copied from .portrait-name in styles.css */
+        .portrait-name {
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: white;
+            /* Assuming grid context might need slight size adjustment if needed */
+            font-size: 1em; 
+        }
+        
+        /* Copied from .portrait-company in styles.css */
+        .portrait-company {
+            font-size: 0.8em;
+            color: #ccc;
+        }
+        
+        .grid-portrait-debug-info {
+            font-size: 12px;
+            color: #a0a0a0;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        
+        /* Card lift effect */
+        .grid-portrait:nth-child(odd) {
+            transform: perspective(1000px) rotateY(-1deg);
+        }
+        
+        .grid-portrait:nth-child(even) {
+            transform: perspective(1000px) rotateY(1deg);
+        }
+        
+        .grid-portrait:nth-child(3n) {
+            transform: perspective(1000px) rotateX(1deg);
+        }
+        
+        /* Animation for grid appearance */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        .reset-filter {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #64a0ff;
+            margin-left: 8px;
+            transition: all 0.2s;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .reset-filter:hover {
+            color: #ffffff;
+            background: rgba(100, 160, 255, 0.2);
+        }
+        
+        .visible {
+            display: block;
+        }
+        
+        .filter-label {
+            opacity: 0.7;
+            margin-right: 5px;
+        }
+        
+        .filter-value {
+            font-weight: 500;
+            color: #64a0ff;
+        }
+        
+        .grid-portrait.active {
+            border: 1px solid rgba(100, 160, 255, 0.6);
+            box-shadow: 0 0 20px rgba(100, 160, 255, 0.3);
+            transform: translateY(-3px) scale(1.01);
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <div id="container">
+            <!-- Portraits will be added here dynamically -->
+            
+            <!-- Repositioned filter button -->
+            <div class="search-section corner-filter">
+                <div class="dropdown">
+                    <button class="search-button" id="filterButton">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                        </svg>
+                        Filter by Company
+                    </button>
+                    <div class="dropdown-content" id="companyDropdown" style="display: none;">
+                        <div class="dropdown-item selected" data-company="all">All Companies</div>
+                        {% for company in companies %}
+                        <div class="dropdown-item" data-company="{{ company }}">{{ company }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grid Container (Moved Inside) -->
+            <div id="grid-container">
+                <div class="grid-header">
+                    <h2 class="grid-title">Company Portraits</h2>
+                    <button class="grid-close" aria-label="Close grid view">&times;</button>
+                </div>
+                <div class="grid-portraits">
+                    <!-- Portraits for the selected company will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="profile-panel">
+            <div class="profile-content">
+                <div class="profile-image"></div>
+                <h2 class="profile-name">Select a Portrait</h2>
+                <div class="profile-company">Click on any portrait to view details</div>
+                <p class="profile-bio">Biographical information will appear here when you select a portrait.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Include scripts.js for base functionality -->
+    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    
+    <!-- Our direct filter implementation -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a moment for any other scripts to load
+            setTimeout(setupDirectFilter, 500);
+            
+            function setupDirectFilter() {
+                console.log('Setting up direct filter implementation');
+                
+                // Get references to key DOM elements
+                const filterButton = document.getElementById('filterButton');
+                const companyDropdown = document.getElementById('companyDropdown');
+                const gridContainer = document.getElementById('grid-container');
+                const gridPortraits = document.querySelector('.grid-portraits');
+                const gridCloseButton = document.querySelector('.grid-close');
+                
+                // Global variables
+                let portraitData = [];
+                let inactivityTimer = null;
+                
+                // Fetch portrait data
+                fetch('/api/portraits')
+                    .then(response => response.json())
+                    .then(data => {
+                        portraitData = data;
+                        console.log('Portraits loaded:', portraitData.length);
+                    })
+                    .catch(error => console.error('Error loading portraits:', error));
+                
+                // REQUIREMENT 1: Dropdown appears when clicking filter button
+                // Set up filter button click handler
+                filterButton.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Calculate position to ensure dropdown stays within #container
+                    const containerRect = document.getElementById('container').getBoundingClientRect();
+                    const buttonRect = filterButton.getBoundingClientRect();
+                    
+                    // Ensure the dropdown shows on the button but within container
+                    companyDropdown.style.maxHeight = `${containerRect.bottom - buttonRect.bottom - 20}px`;
+                    
+                    // Toggle dropdown visibility directly with inline styles
+                    if (companyDropdown.style.display === 'block') {
+                        companyDropdown.style.display = 'none';
+                    } else {
+                        companyDropdown.style.display = 'block';
+                    }
+                    
+                    console.log('Filter button clicked, dropdown visibility:', companyDropdown.style.display);
+                });
+                
+                // Close dropdown when clicking elsewhere
+                document.addEventListener('click', function(event) {
+                    // Only close if click is outside the dropdown, the button, AND inside the container
+                    const container = document.getElementById('container');
+                    if (!filterButton.contains(event.target) && 
+                        !companyDropdown.contains(event.target) && 
+                        container.contains(event.target)) {
+                        companyDropdown.style.display = 'none';
+                    }
+                });
+                
+                // REQUIREMENT 2: Selecting a company displays a grid of portraits
+                // Set up dropdown item click handlers
+                const dropdownItems = document.querySelectorAll('.dropdown-item');
+                dropdownItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        // Get selected company
+                        const company = this.getAttribute('data-company');
+                        console.log('Company selected:', company);
+                        
+                        // Update dropdown selection visual state
+                        dropdownItems.forEach(di => di.classList.remove('selected'));
+                        this.classList.add('selected');
+                        
+                        // Hide dropdown
+                        companyDropdown.style.display = 'none';
+                        
+                        // Show company portraits in grid view
+                        showCompanyGrid(company);
+                        // Hide dropdown after selection
+                        companyDropdown.classList.remove('show');
+                    });
+                });
+                
+                // Function to show grid for selected company
+                function showCompanyGrid(company) {
+                    console.log('Showing grid for company:', company);
+                    
+                    // Force grid container to be visible with multiple techniques
+                    gridContainer.style.display = 'block';
+                    gridContainer.classList.add('force-visible');
+                    
+                    // Debug grid visibility
+                    setTimeout(() => {
+                        console.log('Grid container visibility check:', {
+                            display: window.getComputedStyle(gridContainer).display,
+                            visibility: window.getComputedStyle(gridContainer).visibility,
+                            opacity: window.getComputedStyle(gridContainer).opacity,
+                            zIndex: window.getComputedStyle(gridContainer).zIndex
+                        });
+                    }, 100);
+                    
+                    // Clear existing portraits
+                    gridPortraits.innerHTML = '';
+                    
+                    // Update grid title
+                    document.querySelector('.grid-title').textContent = 
+                        company === 'all' ? 'All Portraits' : `${company} Portraits`;
+                    
+                    // Get filtered portrait data
+                    let filteredPortraits = [];
+                    if (company === 'all') {
+                        filteredPortraits = [...portraitData]; // Create a copy
+                    } else {
+                        filteredPortraits = portraitData.filter(p => p.company === company);
+                    }
+                    console.log(`Found ${filteredPortraits.length} portraits for ${company}`);
+                    
+                    // Sort portraits alphabetically by name
+                    filteredPortraits.sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    // Create portrait elements for grid
+                    filteredPortraits.forEach((portrait, index) => {
+                        const portraitElement = document.createElement('div');
+                        portraitElement.className = 'grid-portrait';
+                        portraitElement.setAttribute('data-id', portrait.id);
+                        
+                        // Portrait image
+                        const img = document.createElement('img');
+                        img.src = portrait.image;
+                        img.alt = portrait.name;
+                        portraitElement.appendChild(img);
+                        
+                        // Portrait info overlay (using classes from styles.css)
+                        const info = document.createElement('div');
+                        info.className = 'portrait-info';
+                        
+                        const nameDiv = document.createElement('div');
+                        nameDiv.className = 'portrait-name';
+                        nameDiv.textContent = portrait.name;
+                        info.appendChild(nameDiv);
+                        
+                        const companyDiv = document.createElement('div');
+                        companyDiv.className = 'portrait-company';
+                        companyDiv.textContent = portrait.company;
+                        info.appendChild(companyDiv);
+                        
+                        portraitElement.appendChild(info);
+                        
+                        // Add click event to show profile
+                        portraitElement.addEventListener('click', () => {
+                            document.querySelector('.profile-image').style.backgroundImage = `url(${portrait.image})`;
+                            document.querySelector('.profile-name').textContent = portrait.name;
+                            document.querySelector('.profile-company').textContent = portrait.company;
+                            document.querySelector('.profile-bio').textContent = portrait.bio;
+                        });
+                        
+                        // Add to grid with delay for animation
+                        portraitElement.style.animationDelay = `${0.03 * index}s`;
+                        gridPortraits.appendChild(portraitElement);
+                    });
+                    
+                    // Reset inactivity timer
+                    resetInactivityTimer();
+                }
+                
+                // REQUIREMENT 3: Clicking portrait loads profile and closes grid
+                // Add click event to portraits
+                
+                // REQUIREMENT 4: Auto-close after 30 seconds of inactivity
+                // Set up inactivity timer
+                
+                // Close button functionality
+                gridCloseButton.addEventListener('click', hideGrid);
+                
+                // Function to hide the grid
+                function hideGrid() {
+                    console.log('Hiding grid');
+                    if (gridContainer) {
+                        gridContainer.style.display = 'none';
+                        gridContainer.classList.remove('force-visible');
+                    }
+                    
+                    // Clear the inactivity timer when manually closed
+                    if (inactivityTimer) {
+                        clearTimeout(inactivityTimer);
+                        inactivityTimer = null;
+                    }
+                }
+                
+                // Reset filter functionality
+                const resetFilterButton = document.querySelector('.reset-filter');
+                if (resetFilterButton) {
+                    resetFilterButton.addEventListener('click', function(event) {
+                        event.stopPropagation();
+                        
+                        // Reset dropdown selection to "All Companies"
+                        dropdownItems.forEach(item => {
+                            if (item.getAttribute('data-company') === 'all') {
+                                item.classList.add('selected');
+                            } else {
+                                item.classList.remove('selected');
+                            }
+                        });
+                        
+                        // Update filter display
+                        document.querySelector('.filter-value').textContent = 'All Companies';
+                        this.style.display = 'none';
+                        
+                        // Hide grid if it's visible
+                        hideGrid();
+                    });
+                }
+                
+                // REQUIREMENT 4: Functions for inactivity timer
+                function startInactivityTimer() {
+                    console.log('Starting inactivity timer (30 seconds)');
+                    clearInactivityTimer();
+                    
+                    inactivityTimer = setTimeout(function() {
+                        console.log('Inactivity timeout reached - closing grid');
+                        hideGrid();
+                    }, 30000); // 30 seconds
+                    
+                    // Reset timer on user interaction
+                    gridContainer.addEventListener('mousemove', resetInactivityTimer);
+                    gridContainer.addEventListener('click', resetInactivityTimer);
+                    gridContainer.addEventListener('touchstart', resetInactivityTimer);
+                    gridContainer.addEventListener('scroll', resetInactivityTimer);
+                }
+                
+                function resetInactivityTimer() {
+                    // Clear any existing timer
+                    if (inactivityTimer) {
+                        clearTimeout(inactivityTimer);
+                    }
+                    
+                    // Set new timer - auto close after 30 seconds
+                    inactivityTimer = setTimeout(() => {
+                        console.log('Inactivity timeout reached - closing grid');
+                        hideGrid();
+                    }, 30000); // 30 seconds
+                }
+                
+                function clearInactivityTimer() {
+                    if (inactivityTimer) {
+                        clearTimeout(inactivityTimer);
+                        inactivityTimer = null;
+                    }
+                }
+                
+                // Helper function to display a profile (fallback)
+                function displayProfile(portrait) {
+                    const profileImage = document.querySelector('.profile-image');
+                    const profileName = document.querySelector('.profile-name');
+                    const profileCompany = document.querySelector('.profile-company');
+                    const profileBio = document.querySelector('.profile-bio');
+                    
+                    if (profileImage && profileName && profileCompany && profileBio) {
+                        profileImage.style.backgroundImage = `url(${portrait.image})`;
+                        profileName.textContent = portrait.name;
+                        profileCompany.textContent = portrait.company;
+                        profileBio.textContent = portrait.bio || '';
+                        
+                        document.querySelector('.profile-panel').classList.add('active');
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

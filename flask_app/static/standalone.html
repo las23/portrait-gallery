@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Gallery - Standalone</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional styles for the standalone page */
+        .corner-filter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        #container {
+            position: relative; /* Ensure the container is a positioning context */
+        }
+        
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            left: auto;
+            background-color: #f9f9f9;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1001;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .dropdown-content.show {
+            display: block !important;
+        }
+        
+        .dropdown-item {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+        
+        .dropdown-item.selected {
+            background-color: #e6f7ff;
+            font-weight: bold;
+        }
+        
+        .active-filter {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 5px 10px;
+            border-radius: 4px;
+            z-index: 999;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .search-button {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .search-button:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <div id="container">
+            <!-- Portraits will be added here dynamically -->
+            
+            <!-- Positioned filter button -->
+            <div class="search-section corner-filter">
+                <div class="dropdown">
+                    <button class="search-button" id="filterButton">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/>
+                        </svg>
+                        Filter by Company
+                    </button>
+                    <div class="dropdown-content" id="companyDropdown">
+                        <div class="dropdown-item selected" data-company="all">All Companies</div>
+                        <!-- Company options will be added dynamically -->
+                    </div>
+                </div>
+                <div class="active-filter">
+                    <span class="filter-label">Showing:</span>
+                    <span class="filter-value">All Companies</span>
+                    <button class="reset-filter" style="display: none;">×</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="profile-panel">
+            <div class="profile-content">
+                <div class="profile-image"></div>
+                <h2 class="profile-name">Select a Portrait</h2>
+                <div class="profile-company">Click on any portrait to view details</div>
+                <p class="profile-bio">Biographical information will appear here when you select a portrait.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Grid Container for filtered portraits -->
+    <div id="grid-container">
+        <div class="grid-header">
+            <h2 class="grid-title">Company Portraits</h2>
+            <button class="grid-close">×</button>
+        </div>
+        <div class="grid-portraits">
+            <!-- Grid portraits will be added here dynamically -->
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let portraitData = [];
+        let currentFilter = 'all';
+        let isDataLoaded = false;
+        let gridViewActive = false;
+        
+        // DOM references
+        const filterButton = document.getElementById('filterButton');
+        const companyDropdown = document.getElementById('companyDropdown');
+        const resetButton = document.querySelector('.reset-filter');
+        const gridCloseButton = document.querySelector('.grid-close');
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Standalone page loaded');
+            
+            // Fetch data
+            fetchPortraitData();
+            
+            // Filter button click
+            if (filterButton) {
+                filterButton.addEventListener('click', function(e) {
+                    console.log('Filter button clicked');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    companyDropdown.classList.toggle('show');
+                });
+            }
+            
+            // Close dropdown when clicking elsewhere
+            document.addEventListener('click', function(e) {
+                if (companyDropdown && companyDropdown.classList.contains('show') && 
+                    !companyDropdown.contains(e.target) && 
+                    e.target !== filterButton) {
+                    companyDropdown.classList.remove('show');
+                }
+            });
+            
+            // Reset filter
+            if (resetButton) {
+                resetButton.addEventListener('click', function() {
+                    console.log('Reset filter clicked');
+                    filterPortraitsByCompany('all');
+                });
+            }
+            
+            // Grid close button
+            if (gridCloseButton) {
+                gridCloseButton.addEventListener('click', function() {
+                    console.log('Grid close clicked');
+                    hideGridView();
+                });
+            }
+        });
+        
+        // Fetch portrait data from API
+        async function fetchPortraitData() {
+            try {
+                const response = await fetch('/api/portraits');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                portraitData = await response.json();
+                isDataLoaded = true;
+                
+                console.log('Portraits loaded:', portraitData.length);
+                
+                // Initialize UI after data is loaded
+                initializePortraits();
+                populateCompanyDropdown();
+            } catch (error) {
+                console.error('Error fetching portrait data:', error);
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'alert alert-danger';
+                errorMessage.textContent = 'Failed to load portrait data. Please refresh the page.';
+                document.body.prepend(errorMessage);
+            }
+        }
+        
+        // Initialize portraits
+        function initializePortraits() {
+            const container = document.getElementById('container');
+            
+            // Clear container
+            const existingPortraits = container.querySelectorAll('.portrait');
+            existingPortraits.forEach(portrait => portrait.remove());
+            
+            // Create portrait elements
+            portraitData.forEach(portrait => {
+                const portraitElement = document.createElement('div');
+                portraitElement.className = 'portrait';
+                portraitElement.setAttribute('data-id', portrait.id);
+                
+                const img = document.createElement('img');
+                img.src = portrait.image;
+                img.alt = portrait.name;
+                
+                portraitElement.appendChild(img);
+                
+                // Add click event
+                portraitElement.addEventListener('click', () => {
+                    showProfile(portrait);
+                });
+                
+                container.appendChild(portraitElement);
+            });
+            
+            console.log('Portraits initialized');
+        }
+        
+        // Populate company dropdown
+        function populateCompanyDropdown() {
+            if (!companyDropdown) return;
+            
+            // Get unique companies
+            const companies = [...new Set(portraitData.map(portrait => portrait.company))].sort();
+            
+            // Clear existing items (except "All Companies")
+            const allCompaniesItem = companyDropdown.querySelector('[data-company="all"]');
+            companyDropdown.innerHTML = '';
+            
+            if (allCompaniesItem) {
+                companyDropdown.appendChild(allCompaniesItem);
+            }
+            
+            // Add company options
+            companies.forEach(company => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item';
+                item.setAttribute('data-company', company);
+                item.textContent = company;
+                item.addEventListener('click', () => {
+                    console.log('Company selected:', company);
+                    filterPortraitsByCompany(company);
+                });
+                companyDropdown.appendChild(item);
+            });
+            
+            console.log('Company dropdown populated:', companies.length, 'companies');
+        }
+        
+        // Filter portraits by company
+        function filterPortraitsByCompany(company) {
+            console.log('Filtering by company:', company);
+            
+            // Update current filter
+            currentFilter = company;
+            
+            // Update dropdown selection
+            document.querySelectorAll('.dropdown-item').forEach(item => {
+                item.classList.toggle('selected', item.getAttribute('data-company') === company);
+            });
+            
+            // Update filter display
+            const filterValue = document.querySelector('.filter-value');
+            if (filterValue) {
+                filterValue.textContent = company === 'all' ? 'All Companies' : company;
+            }
+            
+            // Show/hide reset button
+            if (resetButton) {
+                resetButton.style.display = company === 'all' ? 'none' : 'inline-block';
+                document.querySelector('.active-filter').classList.toggle('visible', company !== 'all');
+            }
+            
+            // Close dropdown
+            if (companyDropdown) {
+                companyDropdown.classList.remove('show');
+            }
+            
+            // Handle view changes
+            if (company === 'all') {
+                hideGridView();
+            } else {
+                showGridView(company);
+            }
+        }
+        
+        // Show grid view with portraits of selected company
+        function showGridView(company) {
+            console.log('Showing grid view for:', company);
+            
+            // Get filtered portraits
+            const filteredPortraits = portraitData.filter(portrait => 
+                portrait.company === company
+            );
+            
+            // Update grid state
+            gridViewActive = true;
+            
+            // Clear existing portraits in grid
+            const gridPortraitsContainer = document.querySelector('.grid-portraits');
+            if (gridPortraitsContainer) {
+                gridPortraitsContainer.innerHTML = '';
+                
+                // Update grid title
+                const gridTitle = document.querySelector('.grid-title');
+                if (gridTitle) {
+                    gridTitle.textContent = `${company} Portraits`;
+                }
+                
+                // Add portraits to grid
+                filteredPortraits.forEach(portrait => {
+                    const portraitElement = document.createElement('div');
+                    portraitElement.className = 'grid-portrait';
+                    portraitElement.setAttribute('data-id', portrait.id);
+                    
+                    const image = document.createElement('img');
+                    image.src = portrait.image;
+                    image.alt = portrait.name;
+                    
+                    const info = document.createElement('div');
+                    info.className = 'grid-portrait-info';
+                    
+                    const name = document.createElement('h3');
+                    name.textContent = portrait.name;
+                    
+                    info.appendChild(name);
+                    
+                    portraitElement.appendChild(image);
+                    portraitElement.appendChild(info);
+                    
+                    // Add click event
+                    portraitElement.addEventListener('click', () => {
+                        showProfile(portrait);
+                    });
+                    
+                    gridPortraitsContainer.appendChild(portraitElement);
+                });
+                
+                // Show grid container
+                document.getElementById('grid-container').classList.add('visible');
+            }
+        }
+        
+        // Hide grid view
+        function hideGridView() {
+            console.log('Hiding grid view');
+            
+            // Update grid state
+            gridViewActive = false;
+            
+            // Hide grid container
+            const gridContainer = document.getElementById('grid-container');
+            if (gridContainer) {
+                gridContainer.classList.remove('visible');
+            }
+        }
+        
+        // Show profile
+        function showProfile(portrait) {
+            console.log('Showing profile:', portrait.name);
+            
+            // Update profile panel
+            const profilePanel = document.querySelector('.profile-panel');
+            const profileImage = document.querySelector('.profile-image');
+            const profileName = document.querySelector('.profile-name');
+            const profileCompany = document.querySelector('.profile-company');
+            const profileBio = document.querySelector('.profile-bio');
+            
+            if (profilePanel && profileImage && profileName && profileCompany && profileBio) {
+                // Set profile image
+                profileImage.style.backgroundImage = `url(${portrait.image})`;
+                
+                // Set profile text
+                profileName.textContent = portrait.name;
+                profileCompany.textContent = portrait.company;
+                profileBio.textContent = portrait.bio;
+                
+                // Show profile panel
+                profilePanel.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

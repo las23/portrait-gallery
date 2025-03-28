@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ portrait.name }} - Portrait Gallery{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('portraits.index') }}">Gallery</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ portrait.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <img src="{{ url_for('static', filename='portraits/' + portrait.image_filename) }}" 
+                 alt="{{ portrait.name }}" 
+                 class="card-img-top portrait-detail-img">
+            <div class="card-body text-center">
+                <span class="badge badge-company mb-2">{{ portrait.company }}</span>
+                <h2 class="card-title">{{ portrait.name }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="card-title mb-4">Biography</h3>
+                <p class="card-text">{{ portrait.bio }}</p>
+                
+                <hr class="my-4">
+                
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <p class="text-muted small mb-1">Added: {{ portrait.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p class="text-muted small mb-0">Last updated: {{ portrait.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('portraits.edit_portrait', id=portrait.id) }}" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button type="button" class="btn btn-danger" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#deleteModal" 
+                                data-portrait-id="{{ portrait.id }}"
+                                data-portrait-name="{{ portrait.name }}">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the portrait of <strong id="portraitNameToDelete"></strong>?</p>
+                <p class="text-danger">This action cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" action="" method="post">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set up the delete modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                // Button that triggered the modal
+                const button = event.relatedTarget;
+                
+                // Extract info from data attributes
+                const portraitId = button.getAttribute('data-portrait-id');
+                const portraitName = button.getAttribute('data-portrait-name');
+                
+                // Update the modal's content
+                const portraitNameElement = deleteModal.querySelector('#portraitNameToDelete');
+                portraitNameElement.textContent = portraitName;
+                
+                // Set the form action
+                const deleteForm = deleteModal.querySelector('#deleteForm');
+                deleteForm.action = `/portraits/${portraitId}/delete`;
+            });
+        }
+    });
+</script>
+{% endblock %}

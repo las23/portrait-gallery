@@ -7,11 +7,26 @@ const isDebugMode = () => {
 // Initialize debug mode
 const debugMode = isDebugMode();
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Store portrait data from API
-    let portraitData = [];
-    let isDataLoaded = false;
+// Define global variables for external access
+let portraitData = [];
+let isDataLoaded = false;
+let currentFilter = 'all';
+let gridViewActive = false;
+
+// Global filter function that can be called from inline scripts
+window.filterPortraitsByCompany = function(company) {
+    // If just returning filtered data (no UI update)
+    if (arguments.length === 1 && typeof filterPortraitsByCompanyInternal === 'function') {
+        return filterPortraitsByCompanyInternal(company);
+    }
     
+    // Otherwise trigger the UI filtering
+    if (typeof filterPortraitsByCompanyInternal === 'function') {
+        filterPortraitsByCompanyInternal(company, true);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
     // Configuration
     const configuration = {
         portraits: {
@@ -32,9 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Store all portrait elements
     let portraits = [];
     
-    // Current filter state
-    let currentFilter = 'all';
-    
     // Set to track portrait IDs currently in use
     let usedPortraitIds = new Set();
     
@@ -45,9 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inactivity timer
     let inactivityTimer = null;
     const inactivityTimeout = 20000; // 20 seconds
-    
-    // Grid view state
-    let gridViewActive = false;
     
     // Function to fetch portrait data from the API
     const fetchPortraitData = async () => {
@@ -63,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Once data is loaded, initialize the portraits
             initializePortraits();
             
+            // Populate the company dropdown
+            populateCompanyDropdown();
+            
             // Initialize the search functionality
             initializeSearch();
             
@@ -72,11 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error fetching portrait data:', error);
-            // Show error message to user
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'alert alert-danger';
-            errorMessage.textContent = 'Failed to load portrait data. Please refresh the page.';
-            document.body.prepend(errorMessage);
         }
     };
     
@@ -84,15 +91,20 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchPortraitData();
     
     // Function to filter portraits by company name
-    const filterPortraitsByCompany = (company) => {
-        // If filtering by company for data selection
-        if (typeof company === 'string' && company !== 'all') {
-            return portraitData.filter(portrait => portrait.company === company);
-        } else if (typeof company === 'string' && company === 'all') {
-            return portraitData;
+    const filterPortraitsByCompanyInternal = (company, triggerUIUpdate = false) => {
+        // If just returning filtered data (no UI update)
+        if (!triggerUIUpdate) {
+            if (typeof company === 'string' && company !== 'all') {
+                return portraitData.filter(portrait => portrait.company === company);
+            } else if (typeof company === 'string' && company === 'all') {
+                return portraitData;
+            }
+            return [];
         }
         
         // Otherwise, this is the UI filtering function
+        console.log('Filtering portraits by company:', company);
+        
         // Reset any existing inactivity timer
         resetInactivityTimer();
         
@@ -110,27 +122,34 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Update filter display
         const filterValue = document.querySelector('.filter-value');
-        filterValue.textContent = company === 'all' ? 'All Companies' : company;
+        if (filterValue) {
+            filterValue.textContent = company === 'all' ? 'All Companies' : company;
+        }
         
         // Show/hide reset button
         const resetButton = document.querySelector('.reset-filter');
-        if (company === 'all') {
-            resetButton.style.display = 'none';
-            document.querySelector('.active-filter').classList.remove('visible');
-            
-            // Hide grid view if visible
-            hideGridView();
-        } else {
-            resetButton.style.display = 'block';
-            document.querySelector('.active-filter').classList.add('visible');
-            
-            // Accelerate current portraits out of view
-            acceleratePortraitsOut();
-            
-            // Show grid view with portraits of selected company
-            showGridView(company);
+        if (resetButton) {
+            if (company === 'all') {
+                resetButton.style.display = 'none';
+                document.querySelector('.active-filter').classList.remove('visible');
+                
+                // Hide grid view if visible
+                hideGridView();
+            } else {
+                resetButton.style.display = 'block';
+                document.querySelector('.active-filter').classList.add('visible');
+                
+                // Accelerate current portraits out of view
+                acceleratePortraitsOut();
+                
+                // Show grid view with portraits of selected company
+                showGridView(company);
+            }
         }
     };
+    
+    // Make filterPortraitsByCompanyInternal available for the global function
+    window.filterPortraitsByCompanyInternal = filterPortraitsByCompanyInternal;
     
     // Function to filter portraits by search text
     const filterPortraitsBySearch = (searchText) => {
@@ -197,12 +216,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Populate company dropdown
     const populateCompanyDropdown = () => {
         const dropdownContent = document.querySelector('.dropdown-content');
+        if (!dropdownContent) return;
+        
         const uniqueCompanies = getUniqueCompanies();
         
         // Clear existing items (except "All Companies")
         const allCompaniesItem = dropdownContent.querySelector('[data-company="all"]');
         dropdownContent.innerHTML = '';
-        dropdownContent.appendChild(allCompaniesItem);
+        
+        if (allCompaniesItem) {
+            dropdownContent.appendChild(allCompaniesItem);
+        } else {
+            // If "All Companies" option doesn't exist, create it
+            const allItem = document.createElement('div');
+            allItem.className = 'dropdown-item selected';
+            allItem.setAttribute('data-company', 'all');
+            allItem.textContent = 'All Companies';
+            allItem.addEventListener('click', () => {
+                window.filterPortraitsByCompany('all');
+            });
+            dropdownContent.appendChild(allItem);
+        }
         
         // Add company options
         uniqueCompanies.forEach(company => {
@@ -211,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.setAttribute('data-company', company);
             item.textContent = company;
             item.addEventListener('click', () => {
-                filterPortraitsByCompany(company);
+                window.filterPortraitsByCompany(company);
             });
             dropdownContent.appendChild(item);
         });
@@ -539,94 +573,64 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Show grid view with portraits of selected company
     const showGridView = (company) => {
-        // Get the grid container and clear any existing portraits
-        const gridContainer = document.getElementById('grid-container');
-        const gridPortraits = document.querySelector('.grid-portraits');
-        gridPortraits.innerHTML = '';
+        console.log('Showing grid view for company:', company);
+        // Get portraits for the selected company
+        const filteredPortraits = filterPortraitsByCompanyInternal(company);
         
-        // Update grid title
-        document.querySelector('.grid-title').textContent = `${company} Portraits`;
+        // Mark grid view as active
+        gridViewActive = true;
         
-        // Filter portrait data by company and sort alphabetically by name
-        const filteredPortraits = portraitData
-            .filter(portrait => portrait.company === company)
-            .sort((a, b) => a.name.localeCompare(b.name));
+        // Clear existing portraits in grid
+        const gridPortraitsContainer = document.querySelector('.grid-portraits');
+        if (gridPortraitsContainer) {
+            gridPortraitsContainer.innerHTML = '';
         
-        // Create a portrait element for each filtered portrait
-        filteredPortraits.forEach(portrait => {
-            const gridPortrait = document.createElement('div');
-            gridPortrait.className = 'grid-portrait';
-            gridPortrait.setAttribute('data-id', portrait.id);
-            
-            const img = document.createElement('img');
-            img.src = portrait.image;
-            img.alt = portrait.name;
-            gridPortrait.appendChild(img);
-            
-            // Add portrait info (name and company)
-            const info = document.createElement('div');
-            info.className = 'grid-portrait-info';
-            
-            const name = document.createElement('div');
-            name.className = 'grid-portrait-name';
-            name.textContent = portrait.name;
-            
-            const companyEl = document.createElement('div');
-            companyEl.className = 'grid-portrait-company';
-            companyEl.textContent = portrait.company;
-            
-            info.appendChild(name);
-            info.appendChild(companyEl);
-            gridPortrait.appendChild(info);
-            
-            // Add debug info if debug mode is enabled
-            if (debugMode) {
-                // Find this portrait in the flowing portraits to get its layer, size and speed
-                const flowPortrait = portraits.find(p => p.element.getAttribute('data-id') == portrait.id);
-                
-                if (flowPortrait) {
-                    const debugInfo = document.createElement('div');
-                    debugInfo.className = 'grid-portrait-debug-info';
-                    
-                    debugInfo.innerHTML = `
-                        <div>Layer: ${flowPortrait.layer}</div>
-                        <div>Size: ${Math.round(flowPortrait.width)}px</div>
-                        <div>Speed: ${flowPortrait.speed.toFixed(2)}px/s</div>
-                        <div>Lane: ${flowPortrait.lane}</div>
-                    `;
-                    gridPortrait.appendChild(debugInfo);
-                }
+            // Update grid title
+            const gridTitle = document.querySelector('.grid-title');
+            if (gridTitle) {
+                gridTitle.textContent = `${company} Portraits`;
             }
             
-            // Add click event
-            gridPortrait.addEventListener('click', () => {
-                showProfile(portrait);
-                // Reset inactivity timer when a portrait is clicked
-                resetInactivityTimer();
+            // Add portraits to grid
+            filteredPortraits.forEach(portrait => {
+                const portraitElement = document.createElement('div');
+                portraitElement.className = 'grid-portrait';
+                portraitElement.setAttribute('data-id', portrait.id);
+                
+                // Create portrait image
+                const image = document.createElement('img');
+                image.src = portrait.image;
+                image.alt = portrait.name;
+                
+                // Create portrait info
+                const info = document.createElement('div');
+                info.className = 'grid-portrait-info';
+                
+                const name = document.createElement('h3');
+                name.textContent = portrait.name;
+                
+                info.appendChild(name);
+                
+                // Add click event to show profile
+                portraitElement.addEventListener('click', () => {
+                    showProfile(portrait);
+                });
+                
+                // Add elements to portrait
+                portraitElement.appendChild(image);
+                portraitElement.appendChild(info);
+                
+                // Add portrait to grid
+                gridPortraitsContainer.appendChild(portraitElement);
             });
             
-            gridPortraits.appendChild(gridPortrait);
-        });
-        
-        // Show the grid container with fade-in effect
-        setTimeout(() => {
-            gridContainer.classList.add('active');
-            gridViewActive = true;
+            // Show grid container
+            document.getElementById('grid-container').classList.add('visible');
             
-            // Set up mouse movement listener for grid container to reset inactivity timer
-            gridContainer.addEventListener('mousemove', resetInactivityTimer);
-            gridContainer.addEventListener('click', resetInactivityTimer);
-            
-            // Add inactivity timer message to inform users
-            const timerMessage = document.createElement('div');
-            timerMessage.className = 'inactivity-message';
-            timerMessage.innerHTML = '<span>Auto-closing in 20s</span>';
-            gridContainer.appendChild(timerMessage);
-        }, 800); // Delay showing grid to let portraits animate out
-        
-        // Set up inactivity timer
-        resetInactivityTimer();
-    };
+            // Start inactivity timer
+            resetInactivityTimer();
+        }
+    }
     
     // Hide grid view and return to flowing portraits
     const hideGridView = () => {
@@ -634,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!gridViewActive) return;
         
         const gridContainer = document.getElementById('grid-container');
-        gridContainer.classList.remove('active');
+        gridContainer.classList.remove('visible');
         gridViewActive = false;
         
         // Clear inactivity timer
@@ -723,13 +727,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Set up reset filter button
         const resetFilter = document.querySelector('.reset-filter');
         resetFilter.addEventListener('click', () => {
-            filterPortraitsByCompany('all');
+            window.filterPortraitsByCompany('all');
         });
         
         // Set up all companies option
         const allCompaniesItem = document.querySelector('[data-company="all"]');
         allCompaniesItem.addEventListener('click', () => {
-            filterPortraitsByCompany('all');
+            window.filterPortraitsByCompany('all');
         });
         
         // Close dropdown when clicking outside

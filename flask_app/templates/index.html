@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Portrait Gallery{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-4 text-primary">Portrait Gallery</h1>
+        
+        <div class="search-box">
+            <form action="{{ url_for('portraits.index') }}" method="get" class="row g-3">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" name="query" id="query" placeholder="Search by name, company or bio..." value="{{ form.query.data or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="company" id="company" class="form-select">
+                        {% for value, label in form.company.choices %}
+                            <option value="{{ value }}" {% if value == form.company.data %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <select name="sort" id="sort" class="form-select">
+                            {% for value, label in form.sort.choices %}
+                                <option value="{{ value }}" {% if value == form.sort.data %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if portraits.items %}
+    <div class="row">
+        {% for portrait in portraits.items %}
+            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                <div class="card h-100">
+                    <img src="{{ url_for('static', filename='portraits/' + portrait.image_filename) }}" class="card-img-top portrait-card-img" alt="{{ portrait.name }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ portrait.name }}</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ portrait.company }}</h6>
+                        <p class="card-text text-truncate">{{ portrait.bio }}</p>
+                        <a href="{{ url_for('portraits.view_portrait', id=portrait.id) }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if portraits.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('portraits.index', page=portraits.prev_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+            {% endif %}
+            
+            {% for page_num in portraits.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    {% if portraits.page == page_num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('portraits.index', page=page_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}">{{ page_num }}</a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if portraits.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('portraits.index', page=portraits.next_num, query=form.query.data, company=form.company.data, sort=form.sort.data) }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% else %}
+    <div class="text-center my-5">
+        <div class="mb-4">
+            <i class="bi bi-image text-muted" style="font-size: 64px;"></i>
+        </div>
+        <h3 class="text-muted">No portraits found</h3>
+        {% if form.query.data or form.company.data %}
+            <p>Try adjusting your search criteria</p>
+            <a href="{{ url_for('portraits.index') }}" class="btn btn-outline-primary mt-2">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Filters
+            </a>
+        {% else %}
+            <p>There are no portraits in the database yet</p>
+            <a href="{{ url_for('portraits.add_portrait') }}" class="btn btn-primary mt-2">
+                <i class="bi bi-plus-circle"></i> Add Your First Portrait
+            </a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
